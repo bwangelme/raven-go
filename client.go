@@ -549,6 +549,7 @@ func (client *Client) worker() {
 		url, authHeader := client.url, client.authHeader
 		client.mu.RUnlock()
 
+		// 执行错误写到了 outgoingPacket.ch 中
 		outgoingPacket.ch <- client.Transport.Send(url, authHeader, outgoingPacket.packet)
 		client.wg.Done()
 	}
@@ -621,6 +622,7 @@ func (client *Client) Capture(packet *Packet, captureTags map[string]string) (ev
 
 	// Lazily start background worker until we
 	// do our first write into the queue.
+	// 执行向 sentry 服务器发送请求的动作
 	client.start.Do(func() {
 		go client.worker()
 	})
@@ -940,6 +942,7 @@ func (t *HTTPTransport) Send(url, authHeader string, packet *Packet) error {
 	req.Header.Set("Content-Type", contentType)
 	res, err := t.Do(req)
 	if err != nil {
+		// x509: certificate signed by unknown authority 的错误是在这里报出的
 		return err
 	}
 	io.Copy(ioutil.Discard, res.Body)
